@@ -65,41 +65,40 @@ def process_channel():
         if msg.chat.id != CHANNEL_ID:
             continue
 
-        if not msg.text:
+        content = msg.text or msg.caption
+        if not content:
             continue
 
-        text = msg.text.strip()
-        if not text.startswith("https://chat.whatsapp.com/"):
+        content = content.strip()
+        if not content.startswith("https://chat.whatsapp.com/"):
             continue
 
-        if link_exists(groups, text):
-            print(f"🔁 الرابط مكرر: {text}")
+        if link_exists(groups, content):
+            print(f"🔁 الرابط مكرر: {content}")
             continue
 
-        # إعداد بيانات الجروب
+        # بيانات الجروب
         name = "جروب بدون اسم"
         description = "تمت إضافته تلقائيًا"
         group_type = "عام"
 
-        # فحص وجود صورة مرفقة
+        # صورة الجروب
         image_path = f"{IMAGE_DIR}/default.png"
         if msg.photo:
-            # ناخد أكبر حجم للصورة
             file_id = msg.photo[-1].file_id
             image_path = save_telegram_image(file_id)
 
-        # إضافة الجروب
         groups.insert(0, {
             "name": name,
             "description": description,
             "type": group_type,
-            "url": text,
+            "url": content,
             "image": image_path,
             "date": datetime.utcnow().isoformat() + "Z"
         })
 
         added += 1
-        print(f"✅ تمت إضافة: {text}")
+        print(f"✅ تمت إضافة: {content}")
 
         if added >= MAX_MESSAGES:
             break
