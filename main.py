@@ -6,65 +6,95 @@ import requests
 from pathlib import Path
 
 # إعدادات أساسية
-BOT_TOKEN = "7872128615:AAE1Pfj5owmrptdSCtlCBj4XuDrRS7FWtrU"
-OWNER_ID = 6177409979  # فقط هذا المستخدم مسموح له
+BOT_TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHANNEL_ID = -1002741781909  # ده ID القناة
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
 DATA_FILE = "groups.json"
 IMAGE_DIR = "images"
+MAX_MESSAGES = 20  # عدد الرسائل اللي هنفحصها
 
-# تأكد من وجود الملف والمجلد
+# تأكد من وجود الملفات والمجلدات
 Path(IMAGE_DIR).mkdir(exist_ok=True)
 if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump([], f, ensure_ascii=False, indent=2)
 
-# تحميل صورة افتراضية مؤقتًا لأي جروب
+# تحميل صورة افتراضية باسم الجروب
 def download_placeholder_image(name):
-    url = "https://via.placeholder.com/150.png?text=" + name[:15]
+    url = f"https://via.placeholder.com/150.png?text={name[:15].replace(' ', '+')}"
     filename = f"{IMAGE_DIR}/{datetime.utcnow().timestamp():.0f}.png"
     r = requests.get(url)
     with open(filename, "wb") as f:
         f.write(r.content)
     return filename
 
-# إضافة الجروب إلى JSON
-def add_group_to_json(name, description, group_type, url, image_path):
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        groups = json.load(f)
+# تحميل البيانات الحالية من JSON
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
 
-    groups.insert(0, {
-        "name": name,
-        "description": description,
-        "type": group_type,
-        "url": url,
-        "image": image_path.replace("\\", "/"),
-        "date": datetime.utcnow().isoformat() + "Z"
-    })
-
+# حفظ البيانات الجديدة
+def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(groups, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-# التعامل مع الرسائل
-@bot.message_handler(func=lambda msg: True)
-def handle_message(message):
-    if message.from_user.id != OWNER_ID:
-        bot.reply_to(message, "🚫 غير مسموح لك باستخدام هذا البوت.")
-        return
+# فحص إذا كان الرابط موجود مسبقًا
+def link_exists(data, url):
+    return any(entry["url"] == url for entry in data)
 
-    text = message.text.strip()
-    if text.startswith("https://chat.whatsapp.com/"):
-        bot.reply_to(message, "⏳ جاري معالجة الرابط...")
+# المعالجة الرئيسية
+def process_channel():
+    updates = bot.get_updates()
+    groups = load_data()
+    added = 0
 
-        # اسم ووصف تجريبيين — ممكن تعدلهم يدوي لاحقًا
+    for update in updates[::-1]:  # من الأحدث للأقدم
+        if not update.channel_post:
+            continue
+
+        msg = update.channel_post
+        if msg.chat.id != CHANNEL_ID:
+            continue
+
+        text = msg.text.strip()
+        if not text.startswith("https://chat.whatsapp.com/"):
+            continue
+
+        if link_exists(groups, text):
+            print(f"🔁 الرابط مكرر: {text}")
+            continue
+
+        # توليد بيانات افتراضية
         name = "جروب واتساب"
-        description = "تمت إضافة هذا الجروب تلقائيًا"
-        group_type = "عام"  # لاحقًا هتعدلها يدوي
-
+        description = "تمت إضافته تلقائيًا من القناة"
+        group_type = "عام"
         image_path = download_placeholder_image(name)
-        add_group_to_json(name, description, group_type, text, image_path)
 
-        bot.send_message(message.chat.id, "✅ تم إضافة الجروب إلى الملف بنجاح")
+        groups.insert(0, {
+            "name": name,
+            "description": description,
+            "type": group_type,
+            "url": text,
+            "image": image_path.replace("\\", "/"),
+            "date": datetime.utcnow().isoformat() + "Z"
+        })
+
+        added += 1
+        print(f"✅ تمت إضافة: {text}")
+
+        if added >= MAX_MESSAGES:
+            break
+
+    if added > 0:
+        save_data(groups)
+        print(f"📦 تم حفظ {added} جروب جديد.")
     else:
-        bot.reply_to(message, "❌ أرسل رابط جروب واتساب بصيغة: https://chat.whatsapp.com/...")
+        print("📭 لا توجد روابط جديدة.")
+
+# تنفيذ
+if __name__ == "__main__":
+    process_channel()
