@@ -1,6 +1,7 @@
 import telebot
 import json
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 import requests
@@ -23,10 +24,8 @@ if not os.path.exists(DATA_FILE):
 
 # --- تحميل البيانات من JSON ---
 def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return []
+    with open(DATA_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 # --- حفظ البيانات ---
 def save_data(data):
@@ -35,9 +34,9 @@ def save_data(data):
 
 # --- فحص تكرار الرابط ---
 def link_exists(data, url):
-    return any(entry["url"] == url for entry in data)
+    return any(entry.get("url") == url for entry in data)
 
-# --- حفظ صورة تيليجرام من ملف ---
+# --- حفظ صورة تيليجرام ---
 def save_telegram_image(file_id):
     try:
         file_info = bot.get_file(file_id)
@@ -50,6 +49,23 @@ def save_telegram_image(file_id):
     except Exception as e:
         print(f"⚠️ خطأ أثناء تحميل الصورة: {e}")
         return f"{IMAGE_DIR}/default.png"
+
+# --- استخراج الحقول من الرسالة ---
+def extract_fields(text):
+    fields = {
+        "name": None,
+        "description": None,
+        "type": None,
+        "url": None
+    }
+
+    pattern = re.compile(r"(?i)(name|description|type|url):\s*(.+)")
+    matches = re.findall(pattern, text)
+
+    for key, value in matches:
+        fields[key.strip().lower()] = value.strip()
+
+    return fields
 
 # --- المعالجة الرئيسية ---
 def process_channel():
@@ -69,20 +85,22 @@ def process_channel():
         if not content:
             continue
 
-        content = content.strip()
-        if not content.startswith("https://chat.whatsapp.com/"):
+        fields = extract_fields(content)
+
+        # لازم يكون فيه على الأقل رابط
+        if not fields["url"] or not fields["url"].startswith("https://chat.whatsapp.com/"):
             continue
 
-        if link_exists(groups, content):
-            print(f"🔁 الرابط مكرر: {content}")
+        if link_exists(groups, fields["url"]):
+            print(f"🔁 الرابط مكرر: {fields['url']}")
             continue
 
-        # بيانات الجروب
-        name = "جروب بدون اسم"
-        description = "تمت إضافته تلقائيًا"
-        group_type = "عام"
+        # إعداد البيانات
+        name = fields["name"] or "جروب بدون اسم"
+        description = fields["description"] or ""
+        group_type = fields["type"] or "غير محدد"
+        url = fields["url"]
 
-        # صورة الجروب
         image_path = f"{IMAGE_DIR}/default.png"
         if msg.photo:
             file_id = msg.photo[-1].file_id
@@ -92,13 +110,13 @@ def process_channel():
             "name": name,
             "description": description,
             "type": group_type,
-            "url": content,
+            "url": url,
             "image": image_path,
             "date": datetime.utcnow().isoformat() + "Z"
         })
 
         added += 1
-        print(f"✅ تمت إضافة: {content}")
+        print(f"✅ تم إضافة: {name} ({url})")
 
         if added >= MAX_MESSAGES:
             break
@@ -109,6 +127,6 @@ def process_channel():
     else:
         print("📭 لا توجد روابط جديدة.")
 
-# --- تنفيذ ---
+# --- تشغيل ---
 if __name__ == "__main__":
     process_channel()
