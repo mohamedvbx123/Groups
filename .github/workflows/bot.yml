@@ -1,7 +1,7 @@
 name: Run Telegram Bot
 
 on:
-  workflow_dispatch:  # تشغيل يدوي من GitHub
+  workflow_dispatch:  # التشغيل يدوي فقط
 
 jobs:
   run-bot:
@@ -25,3 +25,11 @@ jobs:
       run: python main.py
       env:
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+
+    - name: 🔄 Commit and push updates
+      run: |
+        git config user.name "Gropat Bot"
+        git config user.email "bot@gropat.com"
+        git add .
+        git commit -m "🤖 تحديث تلقائي بواسطة البوت" || echo "No changes to commit"
+        git push
