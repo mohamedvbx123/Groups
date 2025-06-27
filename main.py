@@ -1,132 +1,116 @@
 import telebot
-import json
 import os
-import re
-from datetime import datetime
-from pathlib import Path
+import json
 import requests
+from PIL import Image
+from io import BytesIO
 
-# --- إعدادات أساسية ---
+# إعدادات عامة
 BOT_TOKEN = "7872128615:AAE1Pfj5owmrptdSCtlCBj4XuDrRS7FWtrU"
-CHANNEL_ID = -1002741781909
+CHANNEL_ID = -1002741781909  # معرف القناة
+JSON_FILE = "groups.json"
+IMAGES_DIR = "images"
+DEFAULT_IMAGE = f"{IMAGES_DIR}/default.png"
 
+# إنشاء البوت
 bot = telebot.TeleBot(BOT_TOKEN)
 
-DATA_FILE = "groups.json"
-IMAGE_DIR = "images"
-MAX_MESSAGES = 20
+# تحديد التصنيف حسب الرابط
+def detect_classification(url):
+    url = url.lower()
+    if "chat.whatsapp.com" in url:
+        return "WhatsApp_group"
+    elif "whatsapp.com/channel" in url:
+        return "WhatsApp_channel"
+    elif "t.me/" in url:
+        return "Telegram"
+    elif "facebook.com/groups" in url:
+        return "Facebook_Group"
+    elif "facebook.com" in url:
+        return "Facebook_Page"
+    else:
+        return "strange"
 
-# --- تجهيز المجلدات والملفات ---
-Path(IMAGE_DIR).mkdir(exist_ok=True)
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump([], f, ensure_ascii=False, indent=2)
-
-# --- تحميل البيانات من JSON ---
-def load_data():
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-# --- حفظ البيانات ---
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-# --- فحص تكرار الرابط ---
-def link_exists(data, url):
-    return any(entry.get("url") == url for entry in data)
-
-# --- حفظ صورة تيليجرام ---
-def save_telegram_image(file_id):
+# تحميل الصورة
+def download_image(file_id, name_slug):
     try:
         file_info = bot.get_file(file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        ext = os.path.splitext(file_info.file_path)[-1]
-        filename = f"{IMAGE_DIR}/{datetime.utcnow().timestamp():.0f}{ext}"
-        with open(filename, 'wb') as f:
-            f.write(downloaded_file)
-        return filename.replace("\\", "/")
-    except Exception as e:
-        print(f"⚠️ خطأ أثناء تحميل الصورة: {e}")
-        return f"{IMAGE_DIR}/default.png"
+        file = bot.download_file(file_info.file_path)
+        ext = file_info.file_path.split(".")[-1]
+        image_name = f"{name_slug}.{ext}"
+        image_path = os.path.join(IMAGES_DIR, image_name)
+        with open(image_path, "wb") as f:
+            f.write(file)
+        return image_path
+    except:
+        return DEFAULT_IMAGE
 
-# --- استخراج الحقول من الرسالة ---
-def extract_fields(text):
-    fields = {
-        "name": None,
-        "description": None,
-        "type": None,
-        "url": None
-    }
+# تنظيف الاسم للاستخدام كاسم صورة
+def slugify(name):
+    return "".join(c if c.isalnum() else "_" for c in name)[:30]
 
-    pattern = re.compile(r"(?i)(name|description|type|url):\s*(.+)")
-    matches = re.findall(pattern, text)
+# قراءة البيانات القديمة
+def load_data():
+    if os.path.exists(JSON_FILE):
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
 
-    for key, value in matches:
-        fields[key.strip().lower()] = value.strip()
+# حفظ البيانات
+def save_data(data):
+    with open(JSON_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-    return fields
-
-# --- المعالجة الرئيسية ---
+# معالجة الرسائل في القناة
 def process_channel():
     updates = bot.get_updates()
-    groups = load_data()
-    added = 0
+    data = load_data()
+    added_links = {entry["url"] for entry in data}
 
-    for update in updates[::-1]:
-        if not update.channel_post:
+    for update in updates:
+        if not update.message or update.message.chat.id != CHANNEL_ID:
             continue
 
-        msg = update.channel_post
-        if msg.chat.id != CHANNEL_ID:
+        msg = update.message
+        text = msg.text or ""
+        photo = msg.photo[-1] if msg.photo else None
+
+        name = ""
+        description = ""
+        gtype = ""
+        url = ""
+
+        for line in text.splitlines():
+            line = line.strip()
+            if line.lower().startswith("name:"):
+                name = line[5:].strip()
+            elif line.lower().startswith("description:"):
+                description = line[12:].strip()
+            elif line.lower().startswith("type:"):
+                gtype = line[5:].strip()
+            elif line.lower().startswith("url:"):
+                url = line[4:].strip()
+
+        if not url or url in added_links:
             continue
 
-        content = msg.text or msg.caption
-        if not content:
-            continue
+        classification = detect_classification(url)
+        name_slug = slugify(name or "group")
 
-        fields = extract_fields(content)
+        image_path = download_image(photo.file_id, name_slug) if photo else DEFAULT_IMAGE
 
-        # لازم يكون فيه على الأقل رابط
-        if not fields["url"] or not fields["url"].startswith("https://chat.whatsapp.com/"):
-            continue
-
-        if link_exists(groups, fields["url"]):
-            print(f"🔁 الرابط مكرر: {fields['url']}")
-            continue
-
-        # إعداد البيانات
-        name = fields["name"] or "جروب بدون اسم"
-        description = fields["description"] or ""
-        group_type = fields["type"] or "غير محدد"
-        url = fields["url"]
-
-        image_path = f"{IMAGE_DIR}/default.png"
-        if msg.photo:
-            file_id = msg.photo[-1].file_id
-            image_path = save_telegram_image(file_id)
-
-        groups.insert(0, {
-            "name": name,
-            "description": description,
-            "type": group_type,
+        group_entry = {
+            "name": name or "بدون اسم",
+            "description": description or "لا يوجد وصف",
+            "type": gtype or "غير محدد",
             "url": url,
             "image": image_path,
-            "date": datetime.utcnow().isoformat() + "Z"
-        })
+            "classification": classification
+        }
 
-        added += 1
-        print(f"✅ تم إضافة: {name} ({url})")
+        data.insert(0, group_entry)
 
-        if added >= MAX_MESSAGES:
-            break
+    save_data(data)
 
-    if added > 0:
-        save_data(groups)
-        print(f"📦 تم حفظ {added} جروب جديد.")
-    else:
-        print("📭 لا توجد روابط جديدة.")
-
-# --- تشغيل ---
-if __name__ == "__main__":
-    process_channel()
+# تنفيذ المعالجة
+process_channel()
