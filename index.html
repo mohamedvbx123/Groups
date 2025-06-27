@@ -1,87 +1,71 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>جروبات</title>
   <style>
     :root {
-      --main-color: #d00000;
-      --bg-color-light: #f9f9f9;
-      --bg-color-dark: #121212;
-      --text-color-light: #222;
-      --text-color-dark: #eee;
-      --card-bg-light: #fff;
-      --card-bg-dark: #1e1e1e;
+      --whatsapp: #25D366;
+      --telegram: #0088cc;
+      --facebook: #3b5998;
+      --strange: #888;
+      --light-bg: #f4f4f4;
+      --dark-bg: #1e1e1e;
+      --light-text: #111;
+      --dark-text: #f4f4f4;
+      --transition: 0.3s ease;
     }
 
     body {
       margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: var(--bg-color-light);
-      color: var(--text-color-light);
-      transition: all 0.3s ease;
+      font-family: 'Cairo', sans-serif;
+      background: var(--light-bg);
+      color: var(--light-text);
+      transition: var(--transition);
     }
 
     body.dark {
-      background-color: var(--bg-color-dark);
-      color: var(--text-color-dark);
+      background: var(--dark-bg);
+      color: var(--dark-text);
     }
 
     header {
-      background: linear-gradient(45deg, var(--main-color), #800000);
+      background: linear-gradient(to left, #00c6ff, #0072ff);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       color: white;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.6rem;
-      position: sticky;
-      top: 0;
-      z-index: 999;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
 
-    .filter {
-      margin: 1rem;
-      text-align: center;
-    }
-
-    select, .toggle-theme {
-      padding: 0.5rem;
-      font-size: 1rem;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-
-    .toggle-theme {
-      margin-right: 1rem;
+    .theme-toggle {
       cursor: pointer;
+      font-size: 18px;
     }
 
     .group-list {
       display: flex;
       flex-direction: column;
       gap: 1rem;
-      padding: 1rem;
+      padding: 1.5rem;
     }
 
-    .group-card {
-      border-radius: 12px;
-      background-color: var(--card-bg-light);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      padding: 1rem;
+    .group-item {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background-color: #fff;
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
       cursor: pointer;
-      transition: transform 0.2s;
+      transition: var(--transition);
     }
 
-    body.dark .group-card {
-      background-color: var(--card-bg-dark);
-    }
-
-    .group-card:hover {
-      transform: scale(1.01);
+    body.dark .group-item {
+      background-color: #2e2e2e;
     }
 
     .group-image {
@@ -89,52 +73,69 @@
       height: 60px;
       border-radius: 50%;
       object-fit: cover;
+      border: 2px solid #ddd;
     }
 
     .group-info {
       flex-grow: 1;
-      padding: 0 1rem;
-      display: flex;
-      flex-direction: column;
+      margin: 0 1rem;
     }
 
     .group-name {
-      font-size: 1.1rem;
       font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 5px;
     }
 
     .group-type {
       font-size: 0.85rem;
-      color: var(--main-color);
-      margin-top: 4px;
+      opacity: 0.7;
     }
 
+    .group-item.whatsapp_group {
+      background-color: #e8fff2;
+    }
+
+    .group-item.whatsapp_channel {
+      background-color: #d4ffe8;
+    }
+
+    .group-item.telegram {
+      background-color: #e6f4ff;
+    }
+
+    .group-item.facebook_group,
+    .group-item.facebook_page {
+      background-color: #edf2ff;
+    }
+
+    .group-item.strange {
+      background-color: #f0f0f0;
+    }
+
+    /* Dialog */
     .dialog {
       position: fixed;
       inset: 0;
-      background-color: rgba(0,0,0,0.4);
-      display: none;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 999;
     }
 
-    .dialog-content {
-      background-color: white;
-      padding: 1.5rem;
-      border-radius: 12px;
+    .dialog-box {
+      background: white;
+      color: #000;
       max-width: 400px;
-      width: 90%;
+      border-radius: 16px;
+      padding: 1rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
       text-align: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      position: relative;
     }
 
-    body.dark .dialog-content {
-      background-color: #2a2a2a;
-      color: white;
-    }
-
-    .dialog-content img {
+    .dialog-box img {
       width: 100px;
       height: 100px;
       border-radius: 50%;
@@ -142,116 +143,114 @@
       object-fit: cover;
     }
 
-    .dialog-content h2 {
-      margin: 0.5rem 0;
+    .dialog-box h3 {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
     }
 
-    .dialog-content p {
+    .dialog-box .classification {
+      font-size: 0.9rem;
       margin-bottom: 1rem;
-      font-size: 0.95rem;
-      color: #555;
+      color: #666;
     }
 
-    .join-button {
-      padding: 0.6rem 1.5rem;
-      background-color: #28a745;
-      color: white;
+    .dialog-box .desc {
+      max-height: 120px;
+      overflow-y: auto;
+      text-align: right;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: #f9f9f9;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .dialog-box .url {
+      font-size: 0.9rem;
+      color: #0072ff;
+      cursor: pointer;
+      word-break: break-all;
+      margin-bottom: 1rem;
+    }
+
+    .dialog-box button {
+      padding: 0.5rem 1.5rem;
       border: none;
       border-radius: 8px;
-      font-size: 1rem;
+      margin: 0 5px;
       cursor: pointer;
+      font-weight: bold;
     }
 
-    .close-dialog {
-      margin-top: 0.8rem;
-      font-size: 0.9rem;
-      color: #888;
-      cursor: pointer;
+    .join-btn {
+      background-color: #28a745;
+      color: white;
+    }
+
+    .close-btn {
+      background-color: #ddd;
     }
   </style>
 </head>
 <body>
-  <header>📱 جروبات واتساب</header>
-  <div class="filter">
-    <select id="typeFilter">
-      <option value="all">الكل</option>
-    </select>
-    <button class="toggle-theme" onclick="toggleTheme()">🌙/☀️</button>
-  </div>
+  <header>
+    <div class="header-title">📋 جروبات مميزة</div>
+    <div class="theme-toggle" onclick="toggleTheme()">🌙</div>
+  </header>
+
   <div class="group-list" id="groupList"></div>
 
-  <div class="dialog" id="dialog">
-    <div class="dialog-content">
-      <img id="dialogImage" src="" alt="صورة الجروب" />
-      <h2 id="dialogName"></h2>
-      <p id="dialogDescription"></p>
-      <a id="dialogLink" target="_blank">
-        <button class="join-button">انضمام</button>
-      </a>
-      <div class="close-dialog" onclick="closeDialog()">❌ إغلاق</div>
+  <div class="dialog" id="dialog" style="display:none;">
+    <div class="dialog-box">
+      <img id="dialogImg" src="">
+      <h3 id="dialogName"></h3>
+      <div class="classification" id="dialogClassification"></div>
+      <div class="desc" id="dialogDesc"></div>
+      <div class="url" id="dialogUrl" onclick="copyUrl()"></div>
+      <button class="join-btn" id="dialogJoin" onclick="openUrl()">انضمام</button>
+      <button class="close-btn" onclick="closeDialog()">عودة</button>
     </div>
   </div>
 
   <script>
-    let groups = [];
+    const dataUrl = "groups.json"; // يمكن تغييره لمسار حقيقي
+    let currentUrl = "";
 
-    async function loadGroups() {
-      const res = await fetch("groups.json");
-      const data = await res.json();
-      groups = data;
-      renderFilterOptions();
-      renderGroups();
-    }
-
-    function renderFilterOptions() {
-      const filter = document.getElementById("typeFilter");
-      const types = new Set(groups.map(g => g.type));
-      types.forEach(type => {
-        if (type) {
-          const opt = document.createElement("option");
-          opt.value = type;
-          opt.textContent = type;
-          filter.appendChild(opt);
-        }
-      });
-      filter.addEventListener("change", renderGroups);
-    }
-
-    function isArabic(text) {
-      const pattern = /[\u0600-\u06FF]/;
-      return pattern.test(text);
-    }
-
-    function renderGroups() {
+    async function fetchGroups() {
+      const res = await fetch(dataUrl);
+      const groups = await res.json();
       const container = document.getElementById("groupList");
-      container.innerHTML = "";
-      const selected = document.getElementById("typeFilter").value;
+      groups.forEach(group => {
+        const item = document.createElement("div");
+        const isArabic = /[\u0600-\u06FF]/.test(group.name);
+        item.className = `group-item ${group.classification.toLowerCase()}`;
 
-      groups
-        .filter(g => selected === "all" || g.type === selected)
-        .forEach(group => {
-          const card = document.createElement("div");
-          card.className = "group-card";
-          card.onclick = () => showDialog(group);
+        item.innerHTML = isArabic ? `
+          <div class="group-info">
+            <div class="group-name">${group.name}</div>
+            <div class="group-type">${group.type}</div>
+          </div>
+          <img class="group-image" src="${group.image}" alt="صورة">
+        ` : `
+          <img class="group-image" src="${group.image}" alt="صورة">
+          <div class="group-info">
+            <div class="group-name">${group.name}</div>
+            <div class="group-type">${group.type}</div>
+          </div>
+        `;
 
-          const image = `<img class="group-image" src="${group.image}" alt="صورة" />`;
-          const info = `
-            <div class="group-info">
-              <div class="group-name">${group.name}</div>
-              <div class="group-type">${group.type}</div>
-            </div>
-          `;
-
-          card.innerHTML = isArabic(group.name) ? `${info}${image}` : `${image}${info}`;
-          container.appendChild(card);
-        });
+        item.onclick = () => openDialog(group);
+        container.appendChild(item);
+      });
     }
 
-    function showDialog(group) {
-      document.getElementById("dialogImage").src = group.image;
+    function openDialog(group) {
+      document.getElementById("dialogImg").src = group.image;
       document.getElementById("dialogName").textContent = group.name;
-      document.getElementById("dialogDescription").textContent = group.description;
-      document.getElementById("dialogLink").href = group.url;
+      document.getElementById("dialogClassification").textContent = group.classification;
+      document.getElementById("dialogDesc").textContent = group.description;
+      document.getElementById("dialogUrl").textContent = group.url;
+      currentUrl = group.url;
       document.getElementById("dialog").style.display = "flex";
     }
 
@@ -259,11 +258,21 @@
       document.getElementById("dialog").style.display = "none";
     }
 
+    function openUrl() {
+      window.open(currentUrl, '_blank');
+    }
+
+    function copyUrl() {
+      navigator.clipboard.writeText(currentUrl).then(() => {
+        alert("تم نسخ الرابط ✅");
+      });
+    }
+
     function toggleTheme() {
       document.body.classList.toggle("dark");
     }
 
-    loadGroups();
+    fetchGroups();
   </script>
 </body>
 </html>
