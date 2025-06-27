@@ -1,9 +1,9 @@
 name: Run Telegram Bot
 
 on:
-  workflow_dispatch:  # التشغيل يدوي فقط
+  workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'  # تشغيل كل 15 دقيقة تلقائياً
+    - cron: '*/15 * * * *'
 
 jobs:
   run-bot:
@@ -25,8 +25,6 @@ jobs:
 
     - name: 🤖 Run Telegram Bot
       run: python main.py
-      env:
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
 
     - name: 🔄 Commit and push updates
       run: |
