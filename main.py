@@ -5,7 +5,7 @@ import os
 import re
 from datetime import datetime
 
-BOT_TOKEN = "توكن البوت هنا"
+BOT_TOKEN = "7872128615:AAE1Pfj5owmrptdSCtlCBj4XuDrRS7FWtrU"
 CHANNEL_ID = -1002741781909  # ID القناة اللي بتبعت فيها المنشورات
 JSON_FILE = "groups.json"
 IMAGES_DIR = "images"
